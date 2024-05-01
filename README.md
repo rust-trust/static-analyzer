@@ -59,6 +59,8 @@ Windows
 set OPENAI_KEY=sk-ApiKeyExample
 ```
 
+If you want to specify particular OpenAI org or project, set up `OPENAI_ORG_ID` and `OPENAI_PROJECT_ID` environment variables. 
+
 ## How to Use ❓
 
 1. Build
