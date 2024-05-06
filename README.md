@@ -16,7 +16,7 @@ This project is still under development and can be used only for testing purpose
 
 ## How It Works
 
-- **Vulnerability Patterns Analysis:** Analysis of code for
+- **Vulnerability Patterns Code Analysis:** Check rules:
     - [Rust-General](etc/patterns-rust.md)
     - [Rust-Solana](etc/patterns-sol.md)
     - [Solidity-Ethereum](etc/patterns-eth-solidity.md)
