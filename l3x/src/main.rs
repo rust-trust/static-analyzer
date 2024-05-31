@@ -10,12 +10,12 @@ use report_generator::{
 use clap::{App, Arg};
 use regex::Regex;
 use std::{collections::HashMap, error::Error, fs};
-use tokio::runtime::Runtime;
 use walkdir::WalkDir;
 
-fn main() -> Result<(), Box<dyn Error>> {
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn Error>> {
     let matches = App::new("AI-driven Smart Contract Static Analyzer")
-        .version("0.0.2")
+        .version("0.0.3")
         .author("YevhSec")
         .about("L3X detects vulnerabilities in Smart Contracts based on patterns and AI code analysis. Currently supports Solana based on Rust and Ethereum based on Solidity.")
         .arg(Arg::with_name("folder_path")
@@ -25,6 +25,14 @@ fn main() -> Result<(), Box<dyn Error>> {
         .arg(Arg::with_name("all_severities")
              .long("all-severities")
              .help("Validate findings of all severities, not just critical and high"))
+        .arg(Arg::with_name("model")
+             .long("model")
+             .value_name("MODEL")
+             .help("OpenAI model GPT-3.5 or GPT-4 to use for vulnerability validation (default is gpt-3.5-turbo)")
+             .takes_value(true))
+        .arg(Arg::with_name("no_validation")
+             .long("no-validation")
+             .help("Skip vulnerability validation"))
         .get_matches();
 
     let folder_path = matches.value_of("folder_path").unwrap();
@@ -34,43 +42,45 @@ fn main() -> Result<(), Box<dyn Error>> {
         project_id: std::env::var("OPENAI_PROJECT_ID").ok(),
     };
     let validate_all_severities = matches.is_present("all_severities");
+    let model = matches.value_of("model").unwrap_or("gpt-3.5-turbo");
+    let no_validation = matches.is_present("no_validation");
 
-    let rt = Runtime::new()?;
-    rt.block_on(async {
-        let vulnerability_checks = vulnerability_checks::initialize_vulnerability_checks();
-        let results_by_language = analyze_folder(
-            folder_path,
-            &openai_creds,
-            &vulnerability_checks[..],
-            validate_all_severities,
-        )
-        .await?;
+    let vulnerability_checks = vulnerability_checks::initialize_vulnerability_checks();
+    let results_by_language = analyze_folder(
+        folder_path,
+        &openai_creds,
+        &vulnerability_checks[..],
+        validate_all_severities,
+        model,
+        no_validation,
+    )
+    .await?;
 
-        for (language, (files_list, vulnerabilities_details, safe_patterns_map)) in
-            results_by_language
-        {
-            let safe_patterns_overview: Vec<SafePatternDetail> = safe_patterns_map
-                .into_iter()
-                .map(|(_, detail)| detail)
-                .collect();
+    for (language, (files_list, vulnerabilities_details, safe_patterns_map)) in
+        results_by_language
+    {
+        let safe_patterns_overview: Vec<SafePatternDetail> = safe_patterns_map
+            .into_iter()
+            .map(|(_, detail)| detail)
+            .collect();
 
-            let report = FinalReport {
-                security_analysis_summary: SecurityAnalysisSummary {
-                    checked_files: files_list.len(),
-                    files_list,
-                    security_issues_found: vulnerabilities_details.len(),
-                },
-                vulnerabilities_details,
-                safe_patterns_overview,
-            };
+        let report = FinalReport {
+            security_analysis_summary: SecurityAnalysisSummary {
+                checked_files: files_list.len(),
+                files_list,
+                security_issues_found: vulnerabilities_details.len(),
+            },
+            vulnerabilities_details,
+            safe_patterns_overview,
+            model: if no_validation { "-".to_string() } else { model.to_string() },
+        };
 
-            let html_content = report_generator::generate_html_report(&report, &language);
-            fs::write(format!("{}_L3X_SAST_Report.html", language), html_content)
-                .expect("Unable to write HTML report");
-        }
+        let html_content = report_generator::generate_html_report(&report, &language);
+        fs::write(format!("{}_L3X_SAST_Report.html", language), html_content)
+            .expect("Unable to write HTML report");
+    }
 
-        Ok(())
-    })
+    Ok(())
 }
 
 async fn analyze_folder(
@@ -78,6 +88,8 @@ async fn analyze_folder(
     openai_creds: &OpenAICreds,
     checks: &[VulnerabilityCheck],
     validate_all_severities: bool,
+    model: &str,
+    no_validation: bool,
 ) -> Result<
     HashMap<
         String,
@@ -161,39 +173,44 @@ async fn analyze_folder(
             }
         }
 
-        if !findings_by_file.is_empty() {
+        let status = if no_validation {
+            "-".to_string()
+        } else {
             let (status, _) = gpt_validator::validate_vulnerabilities_with_gpt(
                 openai_creds,
                 &findings_by_file,
                 &file_content,
                 language,
                 validate_all_severities,
+                model,
             )
             .await?;
+            status
+        };
 
-            for (_line_number, vulnerability_id, severity, suggested_fix) in findings_by_file {
-                vulnerabilities_details.push(VulnerabilityResult {
-                    vulnerability_id: vulnerability_id.clone(),
-                    file: path.to_string_lossy().to_string(),
-                    title: checks
-                        .iter()
-                        .find(|c| c.id == vulnerability_id)
-                        .unwrap()
-                        .title
-                        .clone(),
-                    severity,
-                    status: status.clone(),
-                    description: checks
-                        .iter()
-                        .find(|c| c.id == vulnerability_id)
-                        .unwrap()
-                        .description
-                        .clone(),
-                    fix: suggested_fix,
-                    persistence_of_safe_pattern: "No".to_string(),
-                    safe_pattern: None,
-                });
-            }
+        for (line_number, vulnerability_id, severity, suggested_fix) in findings_by_file {
+            vulnerabilities_details.push(VulnerabilityResult {
+                vulnerability_id: vulnerability_id.clone(),
+                file: path.to_string_lossy().to_string(),
+                line_number,
+                title: checks
+                    .iter()
+                    .find(|c| c.id == vulnerability_id)
+                    .unwrap()
+                    .title
+                    .clone(),
+                severity,
+                status: status.clone(),
+                description: checks
+                    .iter()
+                    .find(|c| c.id == vulnerability_id)
+                    .unwrap()
+                    .description
+                    .clone(),
+                fix: suggested_fix,
+                persistence_of_safe_pattern: "No".to_string(),
+                safe_pattern: None,
+            });
         }
     }
 
