@@ -37,8 +37,8 @@ L3X detects vulnerabilities in Rust and Solidity code based on patterns and AI c
 ## LLM supported
 
 - GPT-3.5
-- GPT-4 (Soon)
-- Claude (Planned)
+- GPT-4
+- Claude (Soon)
 - Gemini (Planned)
 
 ## Set API Keys
