@@ -1,7 +1,6 @@
 # L3X - AI-driven Static Analyzer
 
 L3X detects vulnerabilities in Rust and Solidity code based on patterns and AI code analysis. Various LLMs act as validators for vulnerabilities detected by patterns and validate each other's results in AI code analysis. Vulnerabilities are confirmed when they receive confirmation from a majority of validators. As a result, a report with validated vulnerabilities and detected safe patterns is generated.
-This project is still under development and can be used only for testing purposes.
 
 ## Supported Languages and Smart Contracts:
 
@@ -12,7 +11,6 @@ This project is still under development and can be used only for testing purpose
 ## Design
 
 ![design](/etc/de.png)
-
 
 ## How It Works
 
@@ -34,7 +32,7 @@ This project is still under development and can be used only for testing purpose
 > Currently it's MVP 
 
 1. Vulnerabilities detects only based on vuln patterns
-2. GPT-3.5 act as validators for vulnerabilities detected by patterns
+2. GPT-3.5/4 act as validators for vulnerabilities detected by patterns
 
 ## LLM supported
 
@@ -73,10 +71,12 @@ cargo run
 ```
 3. Run
 
-Note: By default, only critical and high severity findings are validated. To validate all findings, use the `--all-severities` flag.
+- By default, only critical and high severity findings are validated. To validate all findings, use the ```--all-severities``` flag.
+- To skip vulnerability validation and generate the report without validation, use the ```--no-validation``` flag.
+- To specify the OpenAI model to use for vulnerability validation (default is gpt-3.5-turbo), use the ```--model``` flag followed by the model name (e.g., --model=gpt-4).
 
 ```bash
-l3x smart-contracts-folder-to-analyse
+l3x smart-contracts-folder-to-analyse [--all-severities] [--no-validation] [--model=MODEL]
 ```
 
 ## Usage Example 🏁
@@ -98,8 +98,8 @@ l3x smart-contracts-folder-to-analyse
 - ~~Rust support~~
 - ~~Solana support~~
 - ~~Solidity support~~
-- GPT-4 Integration 🔜 
-- Claude Integration 
+- ~~GPT-4 Integration~~ 
+- Claude Integration 🔜 
 - Gemini Integration 
 - AI Code Analysis
 - AI Code Analysis - Cross-Validation
