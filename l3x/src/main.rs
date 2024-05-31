@@ -15,7 +15,7 @@ use walkdir::WalkDir;
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn Error>> {
     let matches = App::new("AI-driven Smart Contract Static Analyzer")
-        .version("0.0.3")
+        .version("0.3")
         .author("YevhSec")
         .about("L3X detects vulnerabilities in Smart Contracts based on patterns and AI code analysis. Currently supports Solana based on Rust and Ethereum based on Solidity.")
         .arg(Arg::with_name("folder_path")
