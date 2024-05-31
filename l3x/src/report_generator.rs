@@ -1,12 +1,12 @@
 use std::collections::HashMap;
 use serde::{Serialize, Deserialize};
 
-
 #[derive(Serialize, Deserialize, Debug)]
 pub struct FinalReport {
     pub security_analysis_summary: SecurityAnalysisSummary,
     pub vulnerabilities_details: Vec<VulnerabilityResult>,
     pub safe_patterns_overview: Vec<SafePatternDetail>,
+    pub model: String,
 }
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -20,6 +20,7 @@ pub struct SecurityAnalysisSummary {
 pub struct VulnerabilityResult {
     pub vulnerability_id: String,
     pub file: String,
+    pub line_number: usize,
     pub title: String,
     pub severity: String,
     pub status: String,
@@ -58,9 +59,11 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
 
     let vulnerabilities_html = sorted_vulnerabilities.map(|v| {
         let status_icon = if v.status == "Valid" {
-            "🟢 GPT 3.5"
+            "🟢 GPT 3.5/4"
+        } else if v.status == "False positive" {
+            "🔴 GPT 3.5/4"
         } else {
-            "🔴 GPT 3.5"
+            "-"
         };
 
         format!(
@@ -70,10 +73,11 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
                 <td>{}</td>
                 <td>{}</td>
                 <td>{}</td>
+                <td>{}: {}</td>
                 <td>{}</td>
                 <td>{}</td>
             </tr>",
-            v.vulnerability_id, v.title, status_icon, v.severity, v.file, v.description, v.fix
+            v.vulnerability_id, v.title, status_icon, v.severity, v.file, "Line", v.line_number, v.description, v.fix
         )
     }).collect::<String>();
 
@@ -96,7 +100,7 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
         if v.status == "Valid" {
             *severity_count.entry(&v.severity).or_insert(0) += 1;
             total_valid += 1;
-        } else {
+        } else if v.status == "False positive" {
             total_invalid += 1;
         }
     }
@@ -149,6 +153,7 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
     <header>
         <h1>L3X - Static Application Security Testing (SAST) Report</h1>
         <p>Technology: {language}</p>
+        <p>Validation model: {report_model}</p>
         <p>Check more on: <a href='https://vulnplanet.com/'>VulnPlanet</a><br>Contribute: <a href='https://github.com/VulnPlanet/l3x'>GitHub</a></p>
     </header>
     <section>
@@ -164,8 +169,9 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
 </section>      
     <section>
         <h2>Vulnerabilities</h2>
-        <p>🟢 GPT 3.5 - Valid or Not possible to determine</p>
-        <p>🔴 GPT 3.5 - False Positive</p>
+        <p>🟢 GPT 3.5/4.0 - Valid or Not possible to determine</p>
+        <p>🔴 GPT 3.5/4.0 - False Positive</p>
+        <p>- - No validation</p>
         <table>
             <tr>
                 <th>ID</th>
@@ -173,6 +179,7 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
                 <th>Status</th>
                 <th>Severity</th>
                 <th>File</th>
+                <th>Line number</th>
                 <th>Description</th>
                 <th>Details</th>
             </tr>
@@ -242,6 +249,7 @@ pub fn generate_html_report(report: &FinalReport, language: &str) -> String {
 </body>
 </html>",
         language = language,
+        report_model = report.model,
         vulnerabilities_html = vulnerabilities_html,
         safe_patterns_html = safe_patterns_html,
         severity_count_json = severity_count_json,
