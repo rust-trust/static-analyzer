@@ -41,6 +41,7 @@ pub async fn validate_vulnerabilities_with_gpt(
     file_content: &str,
     language: &str,
     validate_all_severities: bool,
+    model: &str,
 ) -> Result<(String, String), Box<dyn Error>> {
     let client = Client::new();
 
@@ -64,7 +65,7 @@ pub async fn validate_vulnerabilities_with_gpt(
     };
 
     let chat_request = ChatRequest {
-        model: "gpt-3.5-turbo".to_string(),
+        model: model.to_string(),
         messages: vec![Message {
             role: "user".to_string(),
             content: prompt,
