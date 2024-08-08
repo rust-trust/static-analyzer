@@ -106,6 +106,3 @@ l3x smart-contracts-folder-to-analyse [--all-severities] [--no-validation] [--mo
 - Refactor
 - Accuracy Comparison
 
-## Contact 📧
-
-All suggestions write to contact contact@vulnplanet.com
